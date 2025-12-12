@@ -42,8 +42,8 @@ const openapi = fromHono(app, {
 });
 
 app.get("/", (c) => {
-	// Serve Scalar API Reference (static HTML) pointing to the generated OpenAPI schema
-	// Note: `fromHono` serves the schema at `/openapi.json` in this template.
+	// Serve Scalar API Reference (static HTML) pointing to the generated OpenAPI schema.
+	// Note: `fromHono` serves the schema at `/openapi.json` by default.
 	const html = `<!doctype html>
 <html lang="en">
   <head>
@@ -52,31 +52,13 @@ app.get("/", (c) => {
     <title>API Reference</title>
     <style>
       html, body { height: 100%; margin: 0; }
-      #api-reference { height: 100%; }
     </style>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@scalar/api-reference@latest/dist/style.css" />
   </head>
   <body>
-    <div id="api-reference"></div>
+    <!-- Scalar standalone auto-mount -->
+    <script id="api-reference" data-url="/openapi.json"></script>
     <script src="https://cdn.jsdelivr.net/npm/@scalar/api-reference@latest/dist/browser/standalone.js"></script>
-    <script>
-      (function () {
-        var el = document.getElementById('api-reference');
-        var config = { spec: { url: '/openapi.json' } };
-
-        // Support multiple global APIs across Scalar versions/bundles.
-        if (window.ScalarAPIReference && typeof window.ScalarAPIReference.render === 'function') {
-          window.ScalarAPIReference.render(el, config);
-          return;
-        }
-        if (window.Scalar && typeof window.Scalar.createApiReference === 'function') {
-          window.Scalar.createApiReference(el, config);
-          return;
-        }
-        // Fallback: some builds auto-mount from an element with data-url
-        el.setAttribute('data-url', '/openapi.json');
-      })();
-    </script>
   </body>
 </html>`;
 
