@@ -12,6 +12,25 @@ export default defineWorkersConfig({
 		target: "esnext",
 	},
 	test: {
+		coverage: {
+			provider: "istanbul",
+			reporter: ["text", "lcov"],
+			all: true,
+			include: ["src/**/*.ts"],
+			exclude: [
+				"**/*.d.ts",
+				"**/node_modules/**",
+				"**/tests/**",
+				"**/dist/**",
+				"**/coverage/**",
+			],
+			thresholds: {
+				lines: 85,
+				functions: 85,
+				branches: 85,
+				statements: 85,
+			},
+		},
 		setupFiles: ["./tests/apply-migrations.ts"],
 		poolOptions: {
 			workers: {

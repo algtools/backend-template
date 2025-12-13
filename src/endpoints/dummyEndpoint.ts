@@ -32,7 +32,7 @@ export class DummyEndpoint extends OpenAPIRoute {
 		},
 	};
 
-	public async handle(c: AppContext) {
+	public async handle(_c: AppContext) {
 		const data = await this.getValidatedData<typeof this.schema>();
 
 		return {
