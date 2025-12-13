@@ -17,20 +17,24 @@ jobs:
       matrix:
         include:
           - name: format
-            cmd: npm run format:check
+            cmd: pnpm run format:check
           - name: lint
-            cmd: npm run lint
+            cmd: pnpm run lint
           - name: typecheck
-            cmd: npm run typecheck
+            cmd: pnpm run typecheck
           - name: vitest-coverage
-            cmd: npm run vitest:coverage
+            cmd: pnpm run vitest:coverage
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
           node-version: 20
-          cache: npm
-      - run: npm ci
+          cache: pnpm
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
       - run: ${{ matrix.cmd }}
       - name: Upload coverage artifact
         if: ${{ matrix.name == 'vitest-coverage' }}
