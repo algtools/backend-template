@@ -1,7 +1,7 @@
 import { D1UpdateEndpoint } from "chanfana";
 import { HandleArgs } from "../../types";
 import { TaskModel } from "./base";
-import { invalidateTasksCache } from "./kvCache";
+import { invalidateTasksCacheAfterWrite } from "./invalidation";
 
 export class TaskUpdate extends D1UpdateEndpoint<HandleArgs> {
 	_meta = {
@@ -18,11 +18,8 @@ export class TaskUpdate extends D1UpdateEndpoint<HandleArgs> {
 	public override async handle(...args: HandleArgs) {
 		const [c] = args;
 		const res = await super.handle(...args);
-		try {
-			await invalidateTasksCache(c.env.TASKS_KV);
-		} catch (error) {
-			console.error("Failed to invalidate tasks cache after update:", error);
-		}
+		await invalidateTasksCacheAfterWrite(c, "tasks.update");
+
 		return res;
 	}
 }

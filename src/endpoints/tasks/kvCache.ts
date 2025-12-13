@@ -45,7 +45,8 @@ export async function getTasksCacheVersion(kv: KVNamespace): Promise<string> {
 
 	const created = crypto.randomUUID();
 	await kv.put(TASKS_CACHE_VERSION_KEY, created);
-	return created;
+	// Read-back reduces the impact of concurrent initializers.
+	return (await kv.get(TASKS_CACHE_VERSION_KEY)) ?? created;
 }
 
 export async function invalidateTasksCache(kv: KVNamespace): Promise<void> {

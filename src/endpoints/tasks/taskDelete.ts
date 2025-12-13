@@ -1,7 +1,7 @@
 import { D1DeleteEndpoint } from "chanfana";
 import { HandleArgs } from "../../types";
 import { TaskModel } from "./base";
-import { invalidateTasksCache } from "./kvCache";
+import { invalidateTasksCacheAfterWrite } from "./invalidation";
 
 export class TaskDelete extends D1DeleteEndpoint<HandleArgs> {
 	_meta = {
@@ -11,11 +11,8 @@ export class TaskDelete extends D1DeleteEndpoint<HandleArgs> {
 	public override async handle(...args: HandleArgs) {
 		const [c] = args;
 		const res = await super.handle(...args);
-		try {
-			await invalidateTasksCache(c.env.TASKS_KV);
-		} catch (error) {
-			console.error("Failed to invalidate tasks cache after delete:", error);
-		}
+		await invalidateTasksCacheAfterWrite(c, "tasks.delete");
+
 		return res;
 	}
 }
