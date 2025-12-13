@@ -1,5 +1,6 @@
 {
 	"name": "backend-template",
+	"version": "1.0.0-rc.1",
 	"description": "Complete backend API template using Hono + Chanfana + D1 + Vitest.",
 	"cloudflare": {
 		"label": "Backend OpenAPI Template",
@@ -33,6 +34,13 @@
 		"husky": "9.1.7",
 		"lint-staged": "15.2.11",
 		"prettier": "3.4.2",
+		"semantic-release": "24.2.1",
+		"@semantic-release/changelog": "6.0.3",
+		"@semantic-release/commit-analyzer": "13.0.1",
+		"@semantic-release/git": "10.0.1",
+		"@semantic-release/github": "11.0.6",
+		"@semantic-release/npm": "12.0.2",
+		"@semantic-release/release-notes-generator": "14.1.0",
 		"typescript-eslint": "8.49.0",
 		"typescript": "5.9.3",
 		"vitest": "3.2.4",
@@ -56,6 +64,7 @@
 		"prepare": "husky",
 		"schema": "npx chanfana",
 		"seedLocalDb": "wrangler d1 migrations apply DB --local",
+		"release": "semantic-release",
 		"typecheck": "tsc -p tsconfig.json && tsc -p tests/tsconfig.json",
 		"vitest": "vitest --config tests/vitest.config.mts",
 		"vitest:coverage": "vitest run --coverage --config tests/vitest.config.mts",
