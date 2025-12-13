@@ -11,7 +11,7 @@ export class TaskDelete extends D1DeleteEndpoint<HandleArgs> {
 	public override async handle(...args: HandleArgs) {
 		const [c] = args;
 		const res = await super.handle(...args);
-		if (c.env.TASKS_KV) await invalidateTasksCache(c.env.TASKS_KV);
+		await invalidateTasksCache(c.env.TASKS_KV);
 		return res;
 	}
 }

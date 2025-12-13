@@ -21,7 +21,6 @@ export class TaskRead extends D1ReadEndpoint<HandleArgs> {
 	public override async handle(...args: HandleArgs): Promise<BaseHandleReturn> {
 		const [c] = args;
 		const kv = c.env.TASKS_KV;
-		if (!kv) return await super.handle(...args);
 
 		const id = c.req.param("id");
 		const version = await getTasksCacheVersion(kv);
@@ -31,11 +30,9 @@ export class TaskRead extends D1ReadEndpoint<HandleArgs> {
 		if (cached) return cached;
 
 		const fresh = await super.handle(...args);
-		if ((fresh as { success?: unknown }).success === true) {
-			await kvPutJson(kv, cacheKey, fresh, {
-				expirationTtl: TASKS_CACHE_TTL_SECONDS,
-			});
-		}
+		await kvPutJson(kv, cacheKey, fresh, {
+			expirationTtl: TASKS_CACHE_TTL_SECONDS,
+		});
 		return fresh;
 	}
 }

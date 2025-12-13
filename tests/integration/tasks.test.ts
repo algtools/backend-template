@@ -66,8 +66,8 @@ describe("Task API Integration Tests", () => {
 		it("caches GET /tasks responses in KV", async () => {
 			await env.TASKS_KV.delete(TASKS_CACHE_VERSION_KEY);
 
-			const res = await SELF.fetch("http://local.test/tasks");
-			expect(res.status).toBe(200);
+			const res1 = await SELF.fetch("http://local.test/tasks");
+			expect(res1.status).toBe(200);
 
 			const version = await env.TASKS_KV.get(TASKS_CACHE_VERSION_KEY);
 			expect(version).toBeTruthy();
@@ -75,6 +75,10 @@ describe("Task API Integration Tests", () => {
 			const key = buildTasksListCacheKey(version!, "http://local.test/tasks");
 			const cached = await env.TASKS_KV.get(key);
 			expect(cached).toBeTruthy();
+
+			// Second request should hit the KV cache branch.
+			const res2 = await SELF.fetch("http://local.test/tasks");
+			expect(res2.status).toBe(200);
 		});
 
 		it("caches GET /tasks/:id responses in KV", async () => {
@@ -88,8 +92,8 @@ describe("Task API Integration Tests", () => {
 				due_date: "2025-01-01T00:00:00.000Z",
 			});
 
-			const res = await SELF.fetch(`http://local.test/tasks/${taskId}`);
-			expect(res.status).toBe(200);
+			const res1 = await SELF.fetch(`http://local.test/tasks/${taskId}`);
+			expect(res1.status).toBe(200);
 
 			const version = await env.TASKS_KV.get(TASKS_CACHE_VERSION_KEY);
 			expect(version).toBeTruthy();
@@ -97,6 +101,10 @@ describe("Task API Integration Tests", () => {
 			const key = buildTasksReadCacheKey(version!, taskId);
 			const cached = await env.TASKS_KV.get(key);
 			expect(cached).toBeTruthy();
+
+			// Second request should hit the KV cache branch.
+			const res2 = await SELF.fetch(`http://local.test/tasks/${taskId}`);
+			expect(res2.status).toBe(200);
 		});
 
 		it("invalidates cache version on task writes", async () => {
