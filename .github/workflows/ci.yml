@@ -1,0 +1,34 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  checks:
+    name: ${{ matrix.name }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: format
+            cmd: npm run format:check
+          - name: lint
+            cmd: npm run lint
+          - name: typecheck
+            cmd: npm run typecheck
+          - name: vitest-coverage
+            cmd: npm run vitest:coverage
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      - run: ${{ matrix.cmd }}

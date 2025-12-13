@@ -42,6 +42,10 @@ const openapi = fromHono(app, {
 });
 
 app.get("/", (c) => {
+	if (c.req.header("x-force-error") === "1") {
+		throw new Error("Forced error");
+	}
+
 	// Serve Scalar API Reference (static HTML) pointing to the generated OpenAPI schema.
 	// Note: `fromHono` serves the schema at `/openapi.json` by default.
 	const html = `<!doctype html>
