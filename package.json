@@ -51,6 +51,7 @@
 		"predeploy": "wrangler d1 migrations apply DB --remote",
 		"predeploy:prod": "wrangler d1 migrations apply DB --remote --config wrangler.prod.jsonc",
 		"predeploy:dev": "wrangler d1 migrations apply DB --remote --config wrangler.jsonc",
+		"predeploy:preview": "wrangler d1 migrations apply DB --remote --config wrangler.preview.jsonc",
 		"versions:upload": "node ./scripts/versions-upload.mjs",
 		"prepare": "husky",
 		"schema": "npx chanfana",

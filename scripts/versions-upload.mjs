@@ -5,5 +5,7 @@ if (process.env.WORKERS_CI_BRANCH === "main") {
 	process.exit(0);
 }
 
-execSync("pnpm run predeploy", { stdio: "inherit" });
-execSync("wrangler versions upload", { stdio: "inherit" });
+execSync("pnpm run predeploy:preview", { stdio: "inherit" });
+execSync("wrangler versions upload --config wrangler.preview.jsonc", {
+	stdio: "inherit",
+});
