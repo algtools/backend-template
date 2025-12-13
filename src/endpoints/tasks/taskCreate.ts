@@ -1,6 +1,7 @@
 import { D1CreateEndpoint } from "chanfana";
 import { HandleArgs } from "../../types";
 import { TaskModel } from "./base";
+import { invalidateTasksCache } from "./kvCache";
 
 export class TaskCreate extends D1CreateEndpoint<HandleArgs> {
 	_meta = {
@@ -14,4 +15,11 @@ export class TaskCreate extends D1CreateEndpoint<HandleArgs> {
 			due_date: true,
 		}),
 	};
+
+	public override async handle(...args: HandleArgs) {
+		const [c] = args;
+		const res = await super.handle(...args);
+		if (c.env.TASKS_KV) await invalidateTasksCache(c.env.TASKS_KV);
+		return res;
+	}
 }

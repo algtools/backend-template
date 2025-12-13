@@ -1,5 +1,10 @@
-import { SELF } from "cloudflare:test";
+import { env, SELF } from "cloudflare:test";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import {
+	buildTasksListCacheKey,
+	buildTasksReadCacheKey,
+	TASKS_CACHE_VERSION_KEY,
+} from "../../src/endpoints/tasks/kvCache";
 
 // Helper function to create a task and return its ID
 async function createTask(taskData: any) {
@@ -54,6 +59,64 @@ describe("Task API Integration Tests", () => {
 					slug: "test-task",
 				}),
 			);
+		});
+	});
+
+	describe("KV cache integration", () => {
+		it("caches GET /tasks responses in KV", async () => {
+			await env.TASKS_KV.delete(TASKS_CACHE_VERSION_KEY);
+
+			const res = await SELF.fetch("http://local.test/tasks");
+			expect(res.status).toBe(200);
+
+			const version = await env.TASKS_KV.get(TASKS_CACHE_VERSION_KEY);
+			expect(version).toBeTruthy();
+
+			const key = buildTasksListCacheKey(version!, "http://local.test/tasks");
+			const cached = await env.TASKS_KV.get(key);
+			expect(cached).toBeTruthy();
+		});
+
+		it("caches GET /tasks/:id responses in KV", async () => {
+			await env.TASKS_KV.delete(TASKS_CACHE_VERSION_KEY);
+
+			const taskId = await createTask({
+				name: "Cache Read Task",
+				slug: "cache-read-task",
+				description: "A task for read caching test",
+				completed: false,
+				due_date: "2025-01-01T00:00:00.000Z",
+			});
+
+			const res = await SELF.fetch(`http://local.test/tasks/${taskId}`);
+			expect(res.status).toBe(200);
+
+			const version = await env.TASKS_KV.get(TASKS_CACHE_VERSION_KEY);
+			expect(version).toBeTruthy();
+
+			const key = buildTasksReadCacheKey(version!, taskId);
+			const cached = await env.TASKS_KV.get(key);
+			expect(cached).toBeTruthy();
+		});
+
+		it("invalidates cache version on task writes", async () => {
+			await env.TASKS_KV.delete(TASKS_CACHE_VERSION_KEY);
+
+			await SELF.fetch("http://local.test/tasks");
+			const v1 = await env.TASKS_KV.get(TASKS_CACHE_VERSION_KEY);
+			expect(v1).toBeTruthy();
+
+			await createTask({
+				name: "Invalidate Cache Task",
+				slug: "invalidate-cache-task",
+				description: "A task that should invalidate cache",
+				completed: false,
+				due_date: "2025-01-01T00:00:00.000Z",
+			});
+
+			const v2 = await env.TASKS_KV.get(TASKS_CACHE_VERSION_KEY);
+			expect(v2).toBeTruthy();
+			expect(v2).not.toBe(v1);
 		});
 	});
 
