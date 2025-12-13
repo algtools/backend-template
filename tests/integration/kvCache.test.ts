@@ -4,6 +4,7 @@ import {
 	buildTasksListCacheKey,
 	buildTasksReadCacheKey,
 	canonicalizeUrlForCache,
+	getTasksCacheTtlSeconds,
 	getTasksCacheVersion,
 	invalidateTasksCache,
 	TASKS_CACHE_VERSION_KEY,
@@ -27,9 +28,30 @@ describe("Tasks KV cache helpers", () => {
 		expect(buildTasksReadCacheKey(v, 123)).toBe("tasks:cache:v1:read:123");
 	});
 
+	it("getTasksCacheTtlSeconds reads override and clamps invalid values", () => {
+		expect(getTasksCacheTtlSeconds({})).toBe(60);
+		expect(getTasksCacheTtlSeconds({ TASKS_CACHE_TTL_SECONDS: "120" })).toBe(
+			120,
+		);
+		expect(getTasksCacheTtlSeconds({ TASKS_CACHE_TTL_SECONDS: "59" })).toBe(60);
+		expect(getTasksCacheTtlSeconds({ TASKS_CACHE_TTL_SECONDS: "nope" })).toBe(
+			60,
+		);
+	});
+
 	it("getTasksCacheVersion returns existing version when present", async () => {
 		await env.TASKS_KV.put(TASKS_CACHE_VERSION_KEY, "existing");
 		await expect(getTasksCacheVersion(env.TASKS_KV)).resolves.toBe("existing");
+	});
+
+	it("getTasksCacheVersion creates a version when missing", async () => {
+		await env.TASKS_KV.delete(TASKS_CACHE_VERSION_KEY);
+		const version = await getTasksCacheVersion(env.TASKS_KV);
+		expect(version).toBeTruthy();
+		expect(version).toMatch(/^[0-9a-f-]{36}$/i);
+
+		const stored = await env.TASKS_KV.get(TASKS_CACHE_VERSION_KEY);
+		expect(stored).toBe(version);
 	});
 
 	it("invalidateTasksCache rotates the version key", async () => {

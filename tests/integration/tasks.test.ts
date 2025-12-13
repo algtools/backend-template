@@ -126,6 +126,36 @@ describe("Task API Integration Tests", () => {
 			expect(v2).toBeTruthy();
 			expect(v2).not.toBe(v1);
 		});
+
+		it("returns fresh data when KV get fails", async () => {
+			const originalGet = env.TASKS_KV.get.bind(env.TASKS_KV);
+			(env.TASKS_KV as any).get = () => {
+				throw new Error("forced kv get failure");
+			};
+			try {
+				const res = await SELF.fetch("http://local.test/tasks");
+				const body = await res.json<{ success: boolean }>();
+				expect(res.status).toBe(200);
+				expect(body.success).toBe(true);
+			} finally {
+				(env.TASKS_KV as any).get = originalGet;
+			}
+		});
+
+		it("returns fresh data when KV put fails", async () => {
+			const originalPut = env.TASKS_KV.put.bind(env.TASKS_KV);
+			(env.TASKS_KV as any).put = () => {
+				throw new Error("forced kv put failure");
+			};
+			try {
+				const res = await SELF.fetch("http://local.test/tasks");
+				const body = await res.json<{ success: boolean }>();
+				expect(res.status).toBe(200);
+				expect(body.success).toBe(true);
+			} finally {
+				(env.TASKS_KV as any).put = originalPut;
+			}
+		});
 	});
 
 	// Tests for POST /tasks
@@ -174,6 +204,32 @@ describe("Task API Integration Tests", () => {
 			expect(response.status).toBe(400);
 			expect(body.success).toBe(false);
 			expect(body.errors).toBeInstanceOf(Array);
+		});
+
+		it("still returns success if cache invalidation fails", async () => {
+			const originalPut = env.TASKS_KV.put.bind(env.TASKS_KV);
+			(env.TASKS_KV as any).put = (key: string) => {
+				if (key === TASKS_CACHE_VERSION_KEY) {
+					throw new Error("forced invalidate failure");
+				}
+				return originalPut(key, crypto.randomUUID());
+			};
+			try {
+				const response = await SELF.fetch(`http://local.test/tasks`, {
+					method: "POST",
+					headers: { "Content-Type": "application/json" },
+					body: JSON.stringify({
+						name: "KV Failure Create Task",
+						slug: "kv-failure-create-task",
+						description: "Create should succeed even if KV fails",
+						completed: false,
+						due_date: "2025-12-31T23:59:59.000Z",
+					}),
+				});
+				expect(response.status).toBe(201);
+			} finally {
+				(env.TASKS_KV as any).put = originalPut;
+			}
 		});
 	});
 
@@ -253,6 +309,40 @@ describe("Task API Integration Tests", () => {
 					...updatedData,
 				}),
 			);
+		});
+
+		it("still returns success if cache invalidation fails", async () => {
+			const taskId = await createTask({
+				name: "KV Failure Update Task",
+				slug: "kv-failure-update-task",
+				description: "Update should succeed even if KV fails",
+				completed: false,
+				due_date: "2025-07-01T00:00:00.000Z",
+			});
+
+			const originalPut = env.TASKS_KV.put.bind(env.TASKS_KV);
+			(env.TASKS_KV as any).put = (key: string) => {
+				if (key === TASKS_CACHE_VERSION_KEY) {
+					throw new Error("forced invalidate failure");
+				}
+				return originalPut(key, crypto.randomUUID());
+			};
+			try {
+				const response = await SELF.fetch(`http://local.test/tasks/${taskId}`, {
+					method: "PUT",
+					headers: { "Content-Type": "application/json" },
+					body: JSON.stringify({
+						name: "KV Failure Update Task (updated)",
+						slug: "kv-failure-update-task-updated",
+						description: "Updated with KV failure",
+						completed: true,
+						due_date: "2025-07-15T10:00:00.000Z",
+					}),
+				});
+				expect(response.status).toBe(200);
+			} finally {
+				(env.TASKS_KV as any).put = originalPut;
+			}
 		});
 
 		it("should return 404 when trying to update a non-existent task", async () => {
@@ -343,6 +433,32 @@ describe("Task API Integration Tests", () => {
 			expect(response.status).toBe(404);
 			expect(body.success).toBe(false);
 			expect(body.errors[0].message).toBe("Not Found");
+		});
+
+		it("still returns success if cache invalidation fails", async () => {
+			const taskId = await createTask({
+				name: "KV Failure Delete Task",
+				slug: "kv-failure-delete-task",
+				description: "Delete should succeed even if KV fails",
+				completed: false,
+				due_date: "2025-08-01T00:00:00.000Z",
+			});
+
+			const originalPut = env.TASKS_KV.put.bind(env.TASKS_KV);
+			(env.TASKS_KV as any).put = (key: string) => {
+				if (key === TASKS_CACHE_VERSION_KEY) {
+					throw new Error("forced invalidate failure");
+				}
+				return originalPut(key, crypto.randomUUID());
+			};
+			try {
+				const response = await SELF.fetch(`http://local.test/tasks/${taskId}`, {
+					method: "DELETE",
+				});
+				expect(response.status).toBe(200);
+			} finally {
+				(env.TASKS_KV as any).put = originalPut;
+			}
 		});
 	});
 });

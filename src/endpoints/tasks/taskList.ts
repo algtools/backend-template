@@ -3,7 +3,7 @@ import { HandleArgs } from "../../types";
 import { TaskModel } from "./base";
 import {
 	buildTasksListCacheKey,
-	TASKS_CACHE_TTL_SECONDS,
+	getTasksCacheTtlSeconds,
 	getTasksCacheVersion,
 	kvGetJson,
 	kvPutJson,
@@ -25,16 +25,32 @@ export class TaskList extends D1ListEndpoint<HandleArgs> {
 		const [c] = args;
 		const kv = c.env.TASKS_KV;
 
-		const version = await getTasksCacheVersion(kv);
-		const cacheKey = buildTasksListCacheKey(version, c.req.url);
+		try {
+			const version = await getTasksCacheVersion(kv);
+			const cacheKey = buildTasksListCacheKey(version, c.req.url);
 
-		const cached = await kvGetJson<BaseHandleReturn>(kv, cacheKey);
-		if (cached) return cached;
+			const cached = await kvGetJson<BaseHandleReturn>(kv, cacheKey);
+			if (cached) return cached;
+		} catch (error) {
+			console.error(
+				"Tasks KV cache read failed (list). Returning fresh.",
+				error,
+			);
+		}
 
 		const fresh = await super.handle(...args);
-		await kvPutJson(kv, cacheKey, fresh, {
-			expirationTtl: TASKS_CACHE_TTL_SECONDS,
-		});
+		try {
+			const version = await getTasksCacheVersion(kv);
+			const cacheKey = buildTasksListCacheKey(version, c.req.url);
+			await kvPutJson(kv, cacheKey, fresh, {
+				expirationTtl: getTasksCacheTtlSeconds(c.env),
+			});
+		} catch (error) {
+			console.error(
+				"Tasks KV cache write failed (list). Returning fresh.",
+				error,
+			);
+		}
 
 		return fresh;
 	}

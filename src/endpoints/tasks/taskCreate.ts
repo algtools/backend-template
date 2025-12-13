@@ -19,7 +19,11 @@ export class TaskCreate extends D1CreateEndpoint<HandleArgs> {
 	public override async handle(...args: HandleArgs) {
 		const [c] = args;
 		const res = await super.handle(...args);
-		await invalidateTasksCache(c.env.TASKS_KV);
+		try {
+			await invalidateTasksCache(c.env.TASKS_KV);
+		} catch (error) {
+			console.error("Failed to invalidate tasks cache after create:", error);
+		}
 		return res;
 	}
 }

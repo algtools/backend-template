@@ -18,7 +18,11 @@ export class TaskUpdate extends D1UpdateEndpoint<HandleArgs> {
 	public override async handle(...args: HandleArgs) {
 		const [c] = args;
 		const res = await super.handle(...args);
-		await invalidateTasksCache(c.env.TASKS_KV);
+		try {
+			await invalidateTasksCache(c.env.TASKS_KV);
+		} catch (error) {
+			console.error("Failed to invalidate tasks cache after update:", error);
+		}
 		return res;
 	}
 }

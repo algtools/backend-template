@@ -1,6 +1,19 @@
 export const TASKS_CACHE_VERSION_KEY = "tasks:cache:version";
 export const TASKS_CACHE_TTL_SECONDS = 60;
 
+export function getTasksCacheTtlSeconds(env: {
+	TASKS_CACHE_TTL_SECONDS?: string;
+}): number {
+	const raw = env.TASKS_CACHE_TTL_SECONDS;
+	if (raw === undefined) return TASKS_CACHE_TTL_SECONDS;
+
+	const parsed = Number(raw);
+	if (!Number.isFinite(parsed)) return TASKS_CACHE_TTL_SECONDS;
+	if (parsed < 60) return TASKS_CACHE_TTL_SECONDS;
+
+	return Math.floor(parsed);
+}
+
 export function canonicalizeUrlForCache(url: string): string {
 	const u = new URL(url);
 	const entries = Array.from(u.searchParams.entries()).sort((a, b) => {
@@ -42,8 +55,11 @@ export async function invalidateTasksCache(kv: KVNamespace): Promise<void> {
 export async function kvGetJson<T>(
 	kv: KVNamespace,
 	key: string,
+	{ validate }: { validate?: (value: unknown) => T } = {},
 ): Promise<T | null> {
-	return (await kv.get(key, { type: "json" })) as T | null;
+	const raw = (await kv.get(key, { type: "json" })) as unknown;
+	if (raw === null) return null;
+	return validate ? validate(raw) : (raw as T);
 }
 
 export async function kvPutJson(
@@ -52,5 +68,14 @@ export async function kvPutJson(
 	value: unknown,
 	{ expirationTtl }: { expirationTtl: number },
 ): Promise<void> {
-	await kv.put(key, JSON.stringify(value), { expirationTtl });
+	let serialized: string;
+	try {
+		serialized = JSON.stringify(value);
+	} catch (error) {
+		throw new Error(`Failed to serialize KV value for key "${key}"`, {
+			cause: error,
+		});
+	}
+
+	await kv.put(key, serialized, { expirationTtl });
 }
