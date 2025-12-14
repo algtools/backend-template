@@ -14,4 +14,10 @@
 			"database_id": "95deb7dc-5bff-473c-8729-d8b817c41a5c",
 		},
 	],
+	"kv_namespaces": [
+		{
+			"binding": "TASKS_KV",
+			"id": "65f2e20d4d524e6180a58f5b754e2640",
+		},
+	],
 }
