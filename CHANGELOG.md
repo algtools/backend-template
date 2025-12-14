@@ -1,5 +1,4 @@
-# [1.0.0-rc.3](https://github.com/algtools/backend-template/compare/v1.0.0-rc.2...v1.0.0-rc.3) (2025-12-14)
-
+# 1.0.0 (2025-12-13)
 
 ### Features
 
@@ -12,6 +11,7 @@
 ### Features
 
 * enhance API with metadata and health check endpoints ([dc9a501](https://github.com/algtools/backend-template/commit/dc9a501e5947d2231cbb26dc84330093cb108369))
+* Add linting and formatting dependencies ([ef9d4c8](https://github.com/algtools/backend-template/commit/ef9d4c8ca32276f4bd49f5d46ba9723d0f06f478))
 
 # 1.0.0-rc.1 (2025-12-13)
 
