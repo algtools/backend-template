@@ -10,5 +10,10 @@ declare namespace Cloudflare {
 		 * Must be >= 60. Defaults to 60.
 		 */
 		TASKS_CACHE_TTL_SECONDS?: string;
+		/**
+		 * Environment identifier (e.g., "development", "production").
+		 * Set via `vars.ENVIRONMENT` in wrangler*.jsonc files.
+		 */
+		ENVIRONMENT: string;
 	}
 }

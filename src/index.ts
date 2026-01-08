@@ -1,5 +1,6 @@
 import { ApiException, fromHono } from "chanfana";
 import { Hono } from "hono";
+import * as Sentry from "@sentry/cloudflare";
 import { tasksRouter } from "./endpoints/tasks/router";
 import { ContentfulStatusCode } from "hono/utils/http-status";
 import { DummyEndpoint } from "./endpoints/dummyEndpoint";
@@ -67,5 +68,14 @@ openapi.route("/tasks", tasksRouter);
 // Register other endpoints
 openapi.post("/dummy/:slug", DummyEndpoint);
 
-// Export the Hono app
-export default app;
+export default Sentry.withSentry((env: Env) => {
+	const { id: versionId } = env.CF_VERSION_METADATA;
+	return {
+		dsn: "https://71e27b970f4cf0f7e32606ba80c80427@o4510105954680832.ingest.us.sentry.io/4510675946700800",
+		release: versionId,
+		environment: env.ENVIRONMENT,
+		// Adds request headers and IP for users, for more info visit:
+		// https://docs.sentry.io/platforms/javascript/guides/cloudflare/configuration/options/#sendDefaultPii
+		sendDefaultPii: true,
+	};
+}, app);
