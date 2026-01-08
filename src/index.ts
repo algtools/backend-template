@@ -73,6 +73,7 @@ export default Sentry.withSentry((env: Env) => {
 	return {
 		dsn: "https://71e27b970f4cf0f7e32606ba80c80427@o4510105954680832.ingest.us.sentry.io/4510675946700800",
 		release: versionId,
+		environment: env.ENVIRONMENT,
 		// Adds request headers and IP for users, for more info visit:
 		// https://docs.sentry.io/platforms/javascript/guides/cloudflare/configuration/options/#sendDefaultPii
 		sendDefaultPii: true,

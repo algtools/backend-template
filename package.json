@@ -52,7 +52,7 @@
 	"scripts": {
 		"cf-typegen": "wrangler types",
 		"deploy": "wrangler deploy",
-		"deploy:prod": "wrangler deploy --config wrangler.prod.jsonc",
+		"deploy:prod": "wrangler deploy --config wrangler.prod.jsonc --outdir dist --upload-source-maps --var SENTRY_RELEASE:$(sentry-cli releases propose-version)",
 		"deploy:dev": "wrangler deploy --config wrangler.jsonc --outdir dist --upload-source-maps --var SENTRY_RELEASE:$(sentry-cli releases propose-version)",
 		"dev": "npm run seedLocalDb && wrangler dev",
 		"format": "prettier . --write",
@@ -72,7 +72,8 @@
 		"vitest:coverage": "vitest run --coverage --config tests/vitest.config.mts",
 		"test": "npm run vitest",
 		"sentry:sourcemaps": "_SENTRY_RELEASE=$(sentry-cli releases propose-version) && sentry-cli releases new $_SENTRY_RELEASE --org=algenium --project=backend-template && sentry-cli sourcemaps upload --org=algenium --project=backend-template --release=$_SENTRY_RELEASE --strip-prefix 'dist/..' dist",
-		"postdeploy:dev": "pnpm sentry:sourcemaps"
+		"postdeploy:dev": "pnpm sentry:sourcemaps",
+		"postdeploy:prod": "pnpm sentry:sourcemaps"
 	},
 	"lint-staged": {
 		"**/*.{js,cjs,mjs,ts,tsx,cts,mts,json,md,yaml,yml}": [
