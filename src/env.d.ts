@@ -10,5 +10,10 @@ declare namespace Cloudflare {
 		 * Must be >= 60. Defaults to 60.
 		 */
 		TASKS_CACHE_TTL_SECONDS?: string;
+		/**
+		 * Version metadata binding providing information about the Worker Version.
+		 * Bound via `wrangler*.jsonc` as `CF_VERSION_METADATA`.
+		 */
+		CF_VERSION_METADATA: WorkerVersionMetadata;
 	}
 }
