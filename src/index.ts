@@ -6,9 +6,10 @@ import { ContentfulStatusCode } from "hono/utils/http-status";
 import { DummyEndpoint } from "./endpoints/dummyEndpoint";
 import pkg from "../package.json";
 import { getOpenApiInfo, getScalarHtml, type AppMeta } from "./app-meta";
+import type { Bindings } from "./types";
 
 // Start a Hono app
-const app = new Hono<{ Bindings: Env }>();
+const app = new Hono<{ Bindings: Bindings }>();
 
 const appMeta: AppMeta = {
 	name: pkg.name,
@@ -68,10 +69,13 @@ openapi.route("/tasks", tasksRouter);
 // Register other endpoints
 openapi.post("/dummy/:slug", DummyEndpoint);
 
-export default Sentry.withSentry((env: Env) => {
+// Sentry is enabled only when SENTRY_DSN environment variable is set.
+// Configure it via wrangler secrets: `wrangler secret put SENTRY_DSN`
+export default Sentry.withSentry((env: Bindings) => {
 	const { id: versionId } = env.CF_VERSION_METADATA;
 	return {
-		dsn: "https://71e27b970f4cf0f7e32606ba80c80427@o4510105954680832.ingest.us.sentry.io/4510675946700800",
+		// When DSN is undefined/empty, Sentry SDK is disabled (no events sent)
+		dsn: env.SENTRY_DSN,
 		release: versionId,
 		environment: env.ENVIRONMENT,
 		// Adds request headers and IP for users, for more info visit:

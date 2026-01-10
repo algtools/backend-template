@@ -71,7 +71,7 @@
 		"vitest": "vitest --config tests/vitest.config.mts",
 		"vitest:coverage": "vitest run --coverage --config tests/vitest.config.mts",
 		"test": "npm run vitest",
-		"sentry:sourcemaps": "_SENTRY_RELEASE=$(sentry-cli releases propose-version) && sentry-cli releases new $_SENTRY_RELEASE --org=algenium --project=backend-template && sentry-cli sourcemaps upload --org=algenium --project=backend-template --release=$_SENTRY_RELEASE --strip-prefix 'dist/..' dist",
+		"sentry:sourcemaps": "_SENTRY_RELEASE=$(sentry-cli releases propose-version) && sentry-cli releases new $_SENTRY_RELEASE && sentry-cli sourcemaps upload --release=$_SENTRY_RELEASE --strip-prefix 'dist/..' dist",
 		"postdeploy:dev": "pnpm sentry:sourcemaps",
 		"postdeploy:prod": "pnpm sentry:sourcemaps"
 	},
