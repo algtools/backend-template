@@ -75,16 +75,16 @@ describe("Task API Integration Tests", () => {
 
 	describe("KV cache integration", () => {
 		it("caches GET /tasks responses in KV", async () => {
-			await env.TASKS_KV.delete(TASKS_CACHE_VERSION_KEY);
+			await env.KV.delete(TASKS_CACHE_VERSION_KEY);
 
 			const res1 = await SELF.fetch("http://local.test/tasks");
 			expect(res1.status).toBe(200);
 
-			const version = await env.TASKS_KV.get(TASKS_CACHE_VERSION_KEY);
+			const version = await env.KV.get(TASKS_CACHE_VERSION_KEY);
 			expect(version).toBeTruthy();
 
 			const key = buildTasksListCacheKey(version!, "http://local.test/tasks");
-			const cached = await env.TASKS_KV.get(key);
+			const cached = await env.KV.get(key);
 			expect(cached).toBeTruthy();
 
 			// Second request should hit the KV cache branch.
@@ -93,7 +93,7 @@ describe("Task API Integration Tests", () => {
 		});
 
 		it("caches GET /tasks/:id responses in KV", async () => {
-			await env.TASKS_KV.delete(TASKS_CACHE_VERSION_KEY);
+			await env.KV.delete(TASKS_CACHE_VERSION_KEY);
 
 			const taskId = await createTask({
 				name: "Cache Read Task",
@@ -106,11 +106,11 @@ describe("Task API Integration Tests", () => {
 			const res1 = await SELF.fetch(`http://local.test/tasks/${taskId}`);
 			expect(res1.status).toBe(200);
 
-			const version = await env.TASKS_KV.get(TASKS_CACHE_VERSION_KEY);
+			const version = await env.KV.get(TASKS_CACHE_VERSION_KEY);
 			expect(version).toBeTruthy();
 
 			const key = buildTasksReadCacheKey(version!, taskId);
-			const cached = await env.TASKS_KV.get(key);
+			const cached = await env.KV.get(key);
 			expect(cached).toBeTruthy();
 
 			// Second request should hit the KV cache branch.
@@ -119,10 +119,10 @@ describe("Task API Integration Tests", () => {
 		});
 
 		it("invalidates cache version on task writes", async () => {
-			await env.TASKS_KV.delete(TASKS_CACHE_VERSION_KEY);
+			await env.KV.delete(TASKS_CACHE_VERSION_KEY);
 
 			await SELF.fetch("http://local.test/tasks");
-			const v1 = await env.TASKS_KV.get(TASKS_CACHE_VERSION_KEY);
+			const v1 = await env.KV.get(TASKS_CACHE_VERSION_KEY);
 			expect(v1).toBeTruthy();
 
 			await createTask({
@@ -135,7 +135,7 @@ describe("Task API Integration Tests", () => {
 
 			await waitFor(
 				async () => {
-					const v2 = await env.TASKS_KV.get(TASKS_CACHE_VERSION_KEY);
+					const v2 = await env.KV.get(TASKS_CACHE_VERSION_KEY);
 					return Boolean(v2) && v2 !== v1;
 				},
 				{ attempts: 30, delayMs: 10 },
@@ -145,7 +145,7 @@ describe("Task API Integration Tests", () => {
 		it("returns fresh data when KV get fails", async () => {
 			try {
 				const getSpy = vi
-					.spyOn(env.TASKS_KV, "get")
+					.spyOn(env.KV, "get")
 					.mockImplementation((..._args: any[]) => {
 						throw new Error("forced kv get failure");
 					});
@@ -163,7 +163,7 @@ describe("Task API Integration Tests", () => {
 		it("returns fresh data when KV put fails", async () => {
 			try {
 				const putSpy = vi
-					.spyOn(env.TASKS_KV, "put")
+					.spyOn(env.KV, "put")
 					.mockImplementation((..._args: any[]) => {
 						throw new Error("forced kv put failure");
 					});
@@ -179,55 +179,52 @@ describe("Task API Integration Tests", () => {
 		});
 
 		it("treats invalid cached payload as cache-miss", async () => {
-			await env.TASKS_KV.delete(TASKS_CACHE_VERSION_KEY);
+			await env.KV.delete(TASKS_CACHE_VERSION_KEY);
 
 			// Ensure version exists.
 			await SELF.fetch("http://local.test/tasks");
-			const version = await env.TASKS_KV.get(TASKS_CACHE_VERSION_KEY);
+			const version = await env.KV.get(TASKS_CACHE_VERSION_KEY);
 			expect(version).toBeTruthy();
 
 			const key = buildTasksListCacheKey(version!, "http://local.test/tasks");
-			await env.TASKS_KV.put(key, JSON.stringify({ nope: true }));
+			await env.KV.put(key, JSON.stringify({ nope: true }));
 
 			const res = await SELF.fetch("http://local.test/tasks");
 			expect(res.status).toBe(200);
 		});
 
 		it("treats non-object cached payload as cache-miss", async () => {
-			await env.TASKS_KV.delete(TASKS_CACHE_VERSION_KEY);
+			await env.KV.delete(TASKS_CACHE_VERSION_KEY);
 			await SELF.fetch("http://local.test/tasks");
-			const version = await env.TASKS_KV.get(TASKS_CACHE_VERSION_KEY);
+			const version = await env.KV.get(TASKS_CACHE_VERSION_KEY);
 			expect(version).toBeTruthy();
 
 			const key = buildTasksListCacheKey(version!, "http://local.test/tasks");
-			await env.TASKS_KV.put(key, JSON.stringify("not-an-object"));
+			await env.KV.put(key, JSON.stringify("not-an-object"));
 
 			const res = await SELF.fetch("http://local.test/tasks");
 			expect(res.status).toBe(200);
 		});
 
 		it("treats cached payload with non-array result as cache-miss", async () => {
-			await env.TASKS_KV.delete(TASKS_CACHE_VERSION_KEY);
+			await env.KV.delete(TASKS_CACHE_VERSION_KEY);
 			await SELF.fetch("http://local.test/tasks");
-			const version = await env.TASKS_KV.get(TASKS_CACHE_VERSION_KEY);
+			const version = await env.KV.get(TASKS_CACHE_VERSION_KEY);
 			expect(version).toBeTruthy();
 
 			const key = buildTasksListCacheKey(version!, "http://local.test/tasks");
-			await env.TASKS_KV.put(
-				key,
-				JSON.stringify({ success: true, result: "nope" }),
-			);
+			await env.KV.put(key, JSON.stringify({ success: true, result: "nope" }));
 
 			const res = await SELF.fetch("http://local.test/tasks");
 			expect(res.status).toBe(200);
 		});
 
 		it("returns fresh data when KV cache entry write fails (list)", async () => {
-			await env.TASKS_KV.delete(TASKS_CACHE_VERSION_KEY);
+			await env.KV.delete(TASKS_CACHE_VERSION_KEY);
 			await SELF.fetch("http://local.test/tasks");
 
-			const originalPut = env.TASKS_KV.put.bind(env.TASKS_KV);
-			const putSpy = vi.spyOn(env.TASKS_KV, "put").mockImplementation(((
+			const originalPut = env.KV.put.bind(env.KV);
+			const putSpy = vi.spyOn(env.KV, "put").mockImplementation(((
 				...args: any[]
 			) => {
 				const [key] = args as [string, unknown, unknown?];
@@ -298,8 +295,8 @@ describe("Task API Integration Tests", () => {
 
 		it("still returns success if cache invalidation fails", async () => {
 			try {
-				const originalPut = env.TASKS_KV.put.bind(env.TASKS_KV);
-				const putSpy = vi.spyOn(env.TASKS_KV, "put").mockImplementation(((
+				const originalPut = env.KV.put.bind(env.KV);
+				const putSpy = vi.spyOn(env.KV, "put").mockImplementation(((
 					...args: any[]
 				) => {
 					const [key] = args as [string, unknown, unknown?];
@@ -354,7 +351,7 @@ describe("Task API Integration Tests", () => {
 		});
 
 		it("treats invalid cached read payload as cache-miss", async () => {
-			await env.TASKS_KV.delete(TASKS_CACHE_VERSION_KEY);
+			await env.KV.delete(TASKS_CACHE_VERSION_KEY);
 
 			const taskId = await createTask({
 				name: "Invalid Cache Read Task",
@@ -365,18 +362,18 @@ describe("Task API Integration Tests", () => {
 			});
 
 			await SELF.fetch(`http://local.test/tasks/${taskId}`);
-			const version = await env.TASKS_KV.get(TASKS_CACHE_VERSION_KEY);
+			const version = await env.KV.get(TASKS_CACHE_VERSION_KEY);
 			expect(version).toBeTruthy();
 
 			const key = buildTasksReadCacheKey(version!, taskId);
-			await env.TASKS_KV.put(key, JSON.stringify("bad"));
+			await env.KV.put(key, JSON.stringify("bad"));
 
 			const res = await SELF.fetch(`http://local.test/tasks/${taskId}`);
 			expect(res.status).toBe(200);
 		});
 
 		it("treats cached read payload missing success as cache-miss", async () => {
-			await env.TASKS_KV.delete(TASKS_CACHE_VERSION_KEY);
+			await env.KV.delete(TASKS_CACHE_VERSION_KEY);
 
 			const taskId = await createTask({
 				name: "Invalid Cache Read Task 2",
@@ -387,18 +384,18 @@ describe("Task API Integration Tests", () => {
 			});
 
 			await SELF.fetch(`http://local.test/tasks/${taskId}`);
-			const version = await env.TASKS_KV.get(TASKS_CACHE_VERSION_KEY);
+			const version = await env.KV.get(TASKS_CACHE_VERSION_KEY);
 			expect(version).toBeTruthy();
 
 			const key = buildTasksReadCacheKey(version!, taskId);
-			await env.TASKS_KV.put(key, JSON.stringify({ result: { id: taskId } }));
+			await env.KV.put(key, JSON.stringify({ result: { id: taskId } }));
 
 			const res = await SELF.fetch(`http://local.test/tasks/${taskId}`);
 			expect(res.status).toBe(200);
 		});
 
 		it("treats cached read payload missing result as cache-miss", async () => {
-			await env.TASKS_KV.delete(TASKS_CACHE_VERSION_KEY);
+			await env.KV.delete(TASKS_CACHE_VERSION_KEY);
 
 			const taskId = await createTask({
 				name: "Invalid Cache Read Task 3",
@@ -409,18 +406,18 @@ describe("Task API Integration Tests", () => {
 			});
 
 			await SELF.fetch(`http://local.test/tasks/${taskId}`);
-			const version = await env.TASKS_KV.get(TASKS_CACHE_VERSION_KEY);
+			const version = await env.KV.get(TASKS_CACHE_VERSION_KEY);
 			expect(version).toBeTruthy();
 
 			const key = buildTasksReadCacheKey(version!, taskId);
-			await env.TASKS_KV.put(key, JSON.stringify({ success: true }));
+			await env.KV.put(key, JSON.stringify({ success: true }));
 
 			const res = await SELF.fetch(`http://local.test/tasks/${taskId}`);
 			expect(res.status).toBe(200);
 		});
 
 		it("returns fresh data when KV cache entry write fails (read)", async () => {
-			await env.TASKS_KV.delete(TASKS_CACHE_VERSION_KEY);
+			await env.KV.delete(TASKS_CACHE_VERSION_KEY);
 
 			const taskId = await createTask({
 				name: "Write Fail Read Task",
@@ -433,8 +430,8 @@ describe("Task API Integration Tests", () => {
 			// Ensure version exists.
 			await SELF.fetch(`http://local.test/tasks/${taskId}`);
 
-			const originalPut = env.TASKS_KV.put.bind(env.TASKS_KV);
-			const putSpy = vi.spyOn(env.TASKS_KV, "put").mockImplementation(((
+			const originalPut = env.KV.put.bind(env.KV);
+			const putSpy = vi.spyOn(env.KV, "put").mockImplementation(((
 				...args: any[]
 			) => {
 				const [key] = args as [string, unknown, unknown?];
@@ -515,8 +512,8 @@ describe("Task API Integration Tests", () => {
 			});
 
 			try {
-				const originalPut = env.TASKS_KV.put.bind(env.TASKS_KV);
-				const putSpy = vi.spyOn(env.TASKS_KV, "put").mockImplementation(((
+				const originalPut = env.KV.put.bind(env.KV);
+				const putSpy = vi.spyOn(env.KV, "put").mockImplementation(((
 					...args: any[]
 				) => {
 					const [key] = args as [string, unknown, unknown?];
@@ -644,8 +641,8 @@ describe("Task API Integration Tests", () => {
 			});
 
 			try {
-				const originalPut = env.TASKS_KV.put.bind(env.TASKS_KV);
-				const putSpy = vi.spyOn(env.TASKS_KV, "put").mockImplementation(((
+				const originalPut = env.KV.put.bind(env.KV);
+				const putSpy = vi.spyOn(env.KV, "put").mockImplementation(((
 					...args: any[]
 				) => {
 					const [key] = args as [string, unknown, unknown?];

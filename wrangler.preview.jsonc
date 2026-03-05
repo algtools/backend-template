@@ -16,7 +16,7 @@
 	],
 	"kv_namespaces": [
 		{
-			"binding": "TASKS_KV",
+			"binding": "KV",
 			"id": "b13d5908c4634af18b44c54936fe464b",
 		},
 	],
