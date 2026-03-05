@@ -40,24 +40,24 @@ describe("Tasks KV cache helpers", () => {
 	});
 
 	it("getTasksCacheVersion returns existing version when present", async () => {
-		await env.TASKS_KV.put(TASKS_CACHE_VERSION_KEY, "existing");
-		await expect(getTasksCacheVersion(env.TASKS_KV)).resolves.toBe("existing");
+		await env.KV.put(TASKS_CACHE_VERSION_KEY, "existing");
+		await expect(getTasksCacheVersion(env.KV)).resolves.toBe("existing");
 	});
 
 	it("getTasksCacheVersion creates a version when missing", async () => {
-		await env.TASKS_KV.delete(TASKS_CACHE_VERSION_KEY);
-		const version = await getTasksCacheVersion(env.TASKS_KV);
+		await env.KV.delete(TASKS_CACHE_VERSION_KEY);
+		const version = await getTasksCacheVersion(env.KV);
 		expect(version).toBeTruthy();
 		expect(version).toMatch(/^[0-9a-f-]{36}$/i);
 
-		const stored = await env.TASKS_KV.get(TASKS_CACHE_VERSION_KEY);
+		const stored = await env.KV.get(TASKS_CACHE_VERSION_KEY);
 		expect(stored).toBe(version);
 	});
 
 	it("invalidateTasksCache rotates the version key", async () => {
-		await env.TASKS_KV.put(TASKS_CACHE_VERSION_KEY, "before");
-		await invalidateTasksCache(env.TASKS_KV);
-		const after = await env.TASKS_KV.get(TASKS_CACHE_VERSION_KEY);
+		await env.KV.put(TASKS_CACHE_VERSION_KEY, "before");
+		await invalidateTasksCache(env.KV);
+		const after = await env.KV.get(TASKS_CACHE_VERSION_KEY);
 		expect(after).toBeTruthy();
 		expect(after).not.toBe("before");
 	});

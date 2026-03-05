@@ -10,7 +10,7 @@ export async function invalidateTasksCacheAfterWrite(
 	c: AppContext,
 	operation: string,
 ): Promise<void> {
-	const p = invalidateTasksCache(c.env.TASKS_KV).catch((error) => {
+	const p = invalidateTasksCache(c.env.KV).catch((error) => {
 		logError(
 			c,
 			"Failed to invalidate tasks cache after write",

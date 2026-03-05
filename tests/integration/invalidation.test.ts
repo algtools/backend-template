@@ -19,12 +19,12 @@ describe("Tasks cache invalidation scheduling", () => {
 	});
 
 	it("awaits invalidation when waitUntil is not available", async () => {
-		await env.TASKS_KV.delete(TASKS_CACHE_VERSION_KEY);
+		await env.KV.delete(TASKS_CACHE_VERSION_KEY);
 		const c = { env } as any;
 
 		await invalidateTasksCacheAfterWrite(c, "tasks.create");
 
-		const stored = await env.TASKS_KV.get(TASKS_CACHE_VERSION_KEY);
+		const stored = await env.KV.get(TASKS_CACHE_VERSION_KEY);
 		expect(stored).toBeTruthy();
 	});
 });

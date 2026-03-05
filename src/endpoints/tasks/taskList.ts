@@ -24,7 +24,7 @@ export class TaskList extends D1ListEndpoint<HandleArgs> {
 
 	public override async handle(...args: HandleArgs): Promise<BaseHandleReturn> {
 		const [c] = args;
-		const kv = c.env.TASKS_KV;
+		const kv = c.env.KV;
 
 		let version: string | null = null;
 		let cacheKey: string | null = null;
