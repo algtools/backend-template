@@ -1,9 +1,18 @@
+# [1.1.0](https://github.com/algtools/backend-template/compare/v1.0.0...v1.1.0) (2025-12-14)
+
+
+### Features
+
+* implement TasksRepository for task management ([ccc5267](https://github.com/algtools/backend-template/commit/ccc5267d79ae740f5ce017bc686b7106f488263e))
+
+
 # [1.1.0-rc.2](https://github.com/algtools/backend-template/compare/v1.1.0-rc.1...v1.1.0-rc.2) (2026-03-06)
 
 
 ### Features
 
 * implement TasksRepository for task management ([ccc5267](https://github.com/algtools/backend-template/commit/ccc5267d79ae740f5ce017bc686b7106f488263e))
+
 
 # [1.1.0-rc.1](https://github.com/algtools/backend-template/compare/v1.0.0...v1.1.0-rc.1) (2025-12-14)
 
@@ -15,6 +24,7 @@
 * Implement KV caching for tasks API ([f1d1262](https://github.com/algtools/backend-template/commit/f1d1262446fe920cac2e1b65703f5aab8af9ee50))
 
 # 1.0.0 (2025-12-13)
+
 
 ### Features
 
