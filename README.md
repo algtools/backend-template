@@ -1,70 +1,166 @@
-# OpenAPI Template
+# Backend Template
 
 [![Deploy to Cloudflare](https://deploy.workers.cloudflare.com/button)](https://deploy.workers.cloudflare.com/?url=https://github.com/algtools/backend-template)
 
 <!-- dash-content-start -->
 
-This is a Cloudflare Worker with OpenAPI 3.1 Auto Generation and Validation using [chanfana](https://github.com/cloudflare/chanfana) and [Hono](https://github.com/honojs/hono).
+A production-ready Cloudflare Worker template for building type-safe REST APIs. It combines [Hono](https://hono.dev/) as the HTTP framework, [chanfana](https://chanfana.com/) for automatic OpenAPI 3.1 schema generation and request validation, [Prisma v7](https://www.prisma.io/) with the [D1 adapter](https://developers.cloudflare.com/d1/) for database access, and [Cloudflare KV](https://developers.cloudflare.com/kv/) for response caching.
 
-This is an example project made to be used as a quick start into building OpenAPI compliant Workers that generates the
-`openapi.json` schema automatically from code and validates the incoming request to the defined parameters or request body.
+## Features
 
-This template includes various endpoints, a D1 database, and integration tests using [Vitest](https://vitest.dev/) as examples. In endpoints, you will find [chanfana D1 AutoEndpoints](https://chanfana.com/endpoints/auto/d1) and a [normal endpoint](https://chanfana.com/endpoints/defining-endpoints) to serve as examples for your projects.
+- **OpenAPI 3.1** — Schemas and request/response validation are generated automatically from your Zod definitions via `chanfana`. Interactive docs are served at `/docsz` (Scalar UI) and the raw schema at `/openapi.json`.
+- **Hono** — Lightweight, edge-first HTTP router with full TypeScript support.
+- **Prisma v7 + D1** — Type-safe ORM with a Cloudflare D1 adapter. Schema is defined in `prisma/schema.prisma`; migrations live in the `migrations/` directory and are applied with Wrangler.
+- **Repository pattern** — Database logic is isolated in `src/domain/*/repository.ts`, keeping endpoints thin and testable.
+- **KV response cache** — List and read endpoints cache responses in Cloudflare KV. Write operations (create, update, delete) invalidate the cache by bumping a version key. TTL is configurable via the `TASKS_CACHE_TTL_SECONDS` environment variable.
+- **Sentry error tracking** — Optional. Set the `SENTRY_DSN` secret and the SDK is activated automatically; leave it unset and nothing is sent.
+- **Structured error handling** — A global `app.onError` handler returns consistent `{ success, errors }` payloads for both validation errors (400) and uncaught exceptions (500).
+- **CI/CD** — GitHub Actions workflow runs typecheck, lint, and tests on every push. Prisma client is generated automatically via the `postinstall` script.
+- **Test suite** — Integration tests run against a real Miniflare D1 + KV environment using `vitest-pool-workers`. Unit tests cover pure domain logic without Workers overhead.
 
-Besides being able to see the OpenAPI schema (openapi.json) in the browser, you can also extract the schema locally no hassle by running this command `npm run schema`.
+## Project structure
+
+```
+src/
+  index.ts                     # Hono app + OpenAPI registry + Sentry wrapper
+  types.ts                     # Shared Bindings / AppContext types
+  app-meta.ts                  # OpenAPI info and Scalar HTML helper
+  lib/
+    prisma.ts                  # PrismaClient factory (D1 adapter)
+  domain/
+    tasks/
+      repository.ts            # TasksRepository — all DB operations via Prisma
+  endpoints/
+    tasks/
+      base.ts                  # Zod schema (TaskApiShape) and serializer
+      router.ts                # Hono sub-router for /tasks
+      taskList.ts              # GET  /tasks
+      taskCreate.ts            # POST /tasks
+      taskRead.ts              # GET  /tasks/:id
+      taskUpdate.ts            # PUT  /tasks/:id
+      taskDelete.ts            # DELETE /tasks/:id
+      kvCache.ts               # KV cache helpers (get, put, invalidate)
+      invalidation.ts          # Cache invalidation after writes
+      logging.ts               # Structured error logging
+    dummyEndpoint.ts           # Example minimal endpoint
+prisma/
+  schema.prisma                # Prisma schema (Task model)
+migrations/
+  0001_initial_schema.sql      # D1 migration
+tests/
+  integration/                 # End-to-end tests (Miniflare Workers runtime)
+  unit/                        # Pure unit tests (repository, serializers)
+```
 
 <!-- dash-content-end -->
 
 > [!IMPORTANT]
-> When using C3 to create this project, select "no" when it asks if you want to deploy. You need to follow this project's [setup steps](https://github.com/cloudflare/templates/tree/main/openapi-template#setup-steps) before deploying.
+> Before deploying you need to create your D1 database and KV namespace and update `wrangler.jsonc` with the generated IDs. See the [Setup Steps](#setup-steps) below.
 
 ## Getting Started
 
-Outside of this repo, you can start a new project with this template using [C3](https://developers.cloudflare.com/pages/get-started/c3/) (the `create-cloudflare` CLI):
+Start a new project from this template using [C3](https://developers.cloudflare.com/pages/get-started/c3/):
 
 ```bash
-npm create cloudflare@latest -- --template=cloudflare/templates/openapi-template
+npm create cloudflare@latest -- --template=algtools/backend-template
 ```
-
-A live public deployment of this template is available at [https://openapi-template.templates.workers.dev](https://openapi-template.templates.workers.dev)
 
 ## Setup Steps
 
-1. Install the project dependencies with a package manager of your choice:
+1. **Install dependencies** (Prisma client is generated automatically via `postinstall`):
+
    ```bash
-   npm install
+   pnpm install
    ```
-2. Create a [D1 database](https://developers.cloudflare.com/d1/get-started/) with the name "openapi-template-db":
+
+2. **Create a D1 database**:
+
    ```bash
-   npx wrangler d1 create openapi-template-db
+   npx wrangler d1 create backend-template-db
    ```
-   ...and update the `database_id` field in `wrangler.json` with the new database ID.
-3. Run the following db migration to initialize the database (notice the `migrations` directory in this project):
+
+   Copy the `database_id` from the output into `wrangler.jsonc`.
+
+3. **Create a KV namespace**:
+
+   ```bash
+   npx wrangler kv namespace create CACHE
+   ```
+
+   Copy the `id` from the output into the `kv_namespaces` binding in `wrangler.jsonc`.
+
+4. **Apply the database migration**:
+
    ```bash
    npx wrangler d1 migrations apply DB --remote
    ```
-4. Deploy the project!
+
+5. **(Optional) Configure Sentry**:
+
+   ```bash
+   npx wrangler secret put SENTRY_DSN
+   ```
+
+6. **Deploy**:
+
    ```bash
    npx wrangler deploy
    ```
-5. Monitor your worker
+
+7. **Monitor**:
    ```bash
    npx wrangler tail
    ```
 
-## Testing
-
-This template includes integration tests using [Vitest](https://vitest.dev/). To run the tests locally:
+## Development
 
 ```bash
-npm run test
+pnpm dev          # Start local dev server (wrangler dev)
+pnpm test         # Run full test suite
+pnpm typecheck    # TypeScript type check
+pnpm lint         # ESLint
+pnpm schema       # Print openapi.json to stdout
 ```
 
-Test files are located in the `tests/` directory, with examples demonstrating how to test your endpoints and database interactions.
+Apply migrations locally (against the local D1 replica):
 
-## Project structure
+```bash
+npx wrangler d1 migrations apply DB --local
+```
 
-1. Your main router is defined in `src/index.ts`.
-2. Each endpoint has its own file in `src/endpoints/`.
-3. Integration tests are located in the `tests/` directory.
-4. For more information read the [chanfana documentation](https://chanfana.com/), [Hono documentation](https://hono.dev/docs), and [Vitest documentation](https://vitest.dev/guide/).
+Regenerate the Prisma client after editing `prisma/schema.prisma`:
+
+```bash
+pnpm prisma:generate
+```
+
+## API Endpoints
+
+| Method   | Path            | Description                                |
+| -------- | --------------- | ------------------------------------------ |
+| `GET`    | `/`             | Service info (name, version)               |
+| `GET`    | `/healthz`      | Health check                               |
+| `GET`    | `/docsz`        | Interactive API docs (Scalar UI)           |
+| `GET`    | `/openapi.json` | Raw OpenAPI 3.1 schema                     |
+| `GET`    | `/tasks`        | List tasks (paginated, searchable, cached) |
+| `POST`   | `/tasks`        | Create a task                              |
+| `GET`    | `/tasks/:id`    | Get a task by ID (cached)                  |
+| `PUT`    | `/tasks/:id`    | Update a task                              |
+| `DELETE` | `/tasks/:id`    | Delete a task                              |
+
+## Environment Variables
+
+| Variable                  | Required | Description                                                    |
+| ------------------------- | -------- | -------------------------------------------------------------- |
+| `ENVIRONMENT`             | Yes      | Runtime environment (`development`, `production`, …)           |
+| `SENTRY_DSN`              | No       | Sentry DSN — SDK is disabled when unset                        |
+| `TASKS_CACHE_TTL_SECONDS` | No       | KV cache TTL for task responses (default: `60`, minimum: `60`) |
+
+## References
+
+- [Hono documentation](https://hono.dev/docs)
+- [chanfana documentation](https://chanfana.com/)
+- [Prisma Cloudflare D1 guide](https://www.prisma.io/docs/orm/prisma-client/deployment/edge/deploy-to-cloudflare-workers)
+- [Cloudflare D1 documentation](https://developers.cloudflare.com/d1/)
+- [Cloudflare KV documentation](https://developers.cloudflare.com/kv/)
+- [Vitest documentation](https://vitest.dev/guide/)

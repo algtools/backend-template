@@ -1,56 +1,62 @@
-import { D1UpdateEndpoint } from "chanfana";
-import type { UpdateFilters } from "chanfana";
-import { createPrismaClient, type PrismaClient } from "../../lib/prisma";
+import { OpenAPIRoute, contentJson } from "chanfana";
+import { z } from "zod";
+import { createPrismaClient } from "../../lib/prisma";
+import { TasksRepository } from "../../domain/tasks/repository";
 import { HandleArgs } from "../../types";
-import { TaskModel, serializeTask, type TaskApiShape } from "./base";
+import { task } from "./base";
 import { invalidateTasksCacheAfterWrite } from "./invalidation";
 
-export class TaskUpdate extends D1UpdateEndpoint<HandleArgs> {
-	_meta = {
-		model: TaskModel,
-		fields: TaskModel.schema.pick({
-			name: true,
-			slug: true,
-			description: true,
-			completed: true,
-			due_date: true,
-		}),
+export class TaskUpdate extends OpenAPIRoute<HandleArgs> {
+	schema = {
+		tags: ["Tasks"],
+		summary: "Update a task",
+		operationId: "tasks-update",
+		request: {
+			params: z.object({ id: z.coerce.number().int() }),
+			body: contentJson(task.omit({ id: true })),
+		},
+		responses: {
+			"200": {
+				description: "Task updated successfully",
+				...contentJson(z.object({ success: z.boolean(), result: task })),
+			},
+			"400": {
+				description: "Validation error",
+				...contentJson(
+					z.object({
+						success: z.boolean(),
+						errors: z.array(z.object({ message: z.string() })),
+					}),
+				),
+			},
+			"404": {
+				description: "Task not found",
+				...contentJson(
+					z.object({
+						success: z.boolean(),
+						errors: z.array(z.object({ message: z.string() })),
+					}),
+				),
+			},
+		},
 	};
 
-	private prisma?: PrismaClient;
-
-	public override async handle(...args: HandleArgs) {
+	async handle(...args: HandleArgs): Promise<Response> {
 		const [c] = args;
-		this.prisma = createPrismaClient(c.env.DB);
-		const res = await super.handle(...args);
+		const data = await this.getValidatedData<typeof this.schema>();
+
+		const repo = new TasksRepository(createPrismaClient(c.env.DB));
+		const updated = await repo.update(data.params.id, data.body);
+
+		if (!updated) {
+			return Response.json(
+				{ success: false, errors: [{ message: "Not Found" }] },
+				{ status: 404 },
+			);
+		}
+
 		await invalidateTasksCacheAfterWrite(c, "tasks.update");
-		return res;
-	}
 
-	public override async getObject(
-		filters: UpdateFilters,
-	): Promise<object | null> {
-		const id = filters.filters[0]?.value as number;
-		const row = await this.prisma!.task.findUnique({ where: { id } });
-		return row ? serializeTask(row) : null;
-	}
-
-	public override async update(
-		_oldObj: TaskApiShape,
-		filters: UpdateFilters,
-	): Promise<TaskApiShape> {
-		const id = filters.filters[0]?.value as number;
-		const data = filters.updatedData as TaskApiShape;
-		const row = await this.prisma!.task.update({
-			where: { id },
-			data: {
-				name: data.name,
-				slug: data.slug,
-				description: data.description,
-				completed: data.completed,
-				dueDate: new Date(data.due_date),
-			},
-		});
-		return serializeTask(row);
+		return Response.json({ success: true, result: updated });
 	}
 }
