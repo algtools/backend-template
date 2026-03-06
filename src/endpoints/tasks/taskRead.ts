@@ -1,6 +1,8 @@
 import { D1ReadEndpoint } from "chanfana";
+import type { ListFilters } from "chanfana";
+import { createPrismaClient, type PrismaClient } from "../../lib/prisma";
 import { HandleArgs } from "../../types";
-import { TaskModel } from "./base";
+import { TaskModel, serializeTask, type TaskApiShape } from "./base";
 import {
 	buildTasksReadCacheKey,
 	getTasksCacheTtlSeconds,
@@ -19,10 +21,13 @@ export class TaskRead extends D1ReadEndpoint<HandleArgs> {
 		model: TaskModel,
 	};
 
+	private prisma?: PrismaClient;
+
 	public override async handle(...args: HandleArgs): Promise<BaseHandleReturn> {
 		const [c] = args;
-		const kv = c.env.KV;
+		this.prisma = createPrismaClient(c.env.DB);
 
+		const kv = c.env.KV;
 		const id = c.req.param("id");
 		let version: string | null = null;
 		let cacheKey: string | null = null;
@@ -71,5 +76,14 @@ export class TaskRead extends D1ReadEndpoint<HandleArgs> {
 			}
 		}
 		return fresh;
+	}
+
+	public override async fetch(
+		filters: ListFilters,
+	): Promise<TaskApiShape | null> {
+		// The first filter condition carries the primary-key value.
+		const id = filters.filters[0]?.value as number;
+		const row = await this.prisma!.task.findUnique({ where: { id } });
+		return row ? serializeTask(row) : null;
 	}
 }

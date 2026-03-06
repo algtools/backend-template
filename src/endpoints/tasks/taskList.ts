@@ -1,6 +1,8 @@
 import { D1ListEndpoint } from "chanfana";
+import type { ListFilters } from "chanfana";
+import { createPrismaClient, type PrismaClient } from "../../lib/prisma";
 import { HandleArgs } from "../../types";
-import { TaskModel } from "./base";
+import { TaskModel, serializeTask, buildPrismaWhere } from "./base";
 import {
 	buildTasksListCacheKey,
 	getTasksCacheTtlSeconds,
@@ -22,10 +24,13 @@ export class TaskList extends D1ListEndpoint<HandleArgs> {
 	searchFields = ["name", "slug", "description"];
 	defaultOrderBy = "id DESC";
 
+	private prisma?: PrismaClient;
+
 	public override async handle(...args: HandleArgs): Promise<BaseHandleReturn> {
 		const [c] = args;
-		const kv = c.env.KV;
+		this.prisma = createPrismaClient(c.env.DB);
 
+		const kv = c.env.KV;
 		let version: string | null = null;
 		let cacheKey: string | null = null;
 		try {
@@ -74,5 +79,57 @@ export class TaskList extends D1ListEndpoint<HandleArgs> {
 		}
 
 		return fresh;
+	}
+
+	public override async list(filters: ListFilters) {
+		const { page = 1, per_page = 20 } = filters.options;
+		const orderByDir = (
+			(filters.options.order_by_direction ?? "desc") as string
+		).toLowerCase() as "asc" | "desc";
+		// Map any snake_case order field to the Prisma camelCase name.
+		const rawOrderBy = filters.options.order_by ?? "id";
+		const orderByField =
+			rawOrderBy === "due_date" ? "dueDate" : (rawOrderBy as string);
+
+		const skip = (page - 1) * per_page;
+
+		// chanfana encodes full-text search as a single pseudo-filter
+		// { field: "search", operator: "LIKE", value: "%term%" }.
+		// We expand it into an OR clause across all searchable fields.
+		const searchFilter = filters.filters.find((f) => f.field === "search");
+		const fieldFilters = filters.filters.filter((f) => f.field !== "search");
+		const baseWhere = buildPrismaWhere(fieldFilters);
+
+		const where =
+			searchFilter !== undefined
+				? {
+						...baseWhere,
+						OR: this.searchFields.map((f) => ({
+							[f]: {
+								contains: (searchFilter.value as string).replace(/%/g, ""),
+							},
+						})),
+					}
+				: baseWhere;
+
+		const [rows, totalCount] = await Promise.all([
+			this.prisma!.task.findMany({
+				where,
+				orderBy: { [orderByField]: orderByDir },
+				skip,
+				take: per_page,
+			}),
+			this.prisma!.task.count({ where }),
+		]);
+
+		return {
+			result: rows.map(serializeTask),
+			result_info: {
+				count: rows.length,
+				page,
+				per_page,
+				total_count: totalCount,
+			},
+		};
 	}
 }
