@@ -6,6 +6,8 @@
 
 A production-ready Cloudflare Worker template for building type-safe REST APIs. It combines [Hono](https://hono.dev/) as the HTTP framework, [chanfana](https://chanfana.com/) for automatic OpenAPI 3.1 schema generation and request validation, [Prisma v7](https://www.prisma.io/) with the [D1 adapter](https://developers.cloudflare.com/d1/) for database access, and [Cloudflare KV](https://developers.cloudflare.com/kv/) for response caching.
 
+**Deploy with one click.** Use the button above — the Cloudflare wizard provisions the Worker, D1 database, KV namespace, and applies migrations automatically. No manual setup required.
+
 ## Features
 
 - **OpenAPI 3.1** — Schemas and request/response validation are generated automatically from your Zod definitions via `chanfana`. Interactive docs are served at `/docsz` (Scalar UI) and the raw schema at `/openapi.json`.
@@ -53,86 +55,6 @@ tests/
 ```
 
 <!-- dash-content-end -->
-
-> [!IMPORTANT]
-> Before deploying you need to create your D1 database and KV namespace and update `wrangler.jsonc` with the generated IDs. See the [Setup Steps](#setup-steps) below.
-
-## Getting Started
-
-Start a new project from this template using [C3](https://developers.cloudflare.com/pages/get-started/c3/):
-
-```bash
-npm create cloudflare@latest -- --template=algtools/backend-template
-```
-
-## Setup Steps
-
-1. **Install dependencies** (Prisma client is generated automatically via `postinstall`):
-
-   ```bash
-   pnpm install
-   ```
-
-2. **Create a D1 database**:
-
-   ```bash
-   npx wrangler d1 create backend-template-db
-   ```
-
-   Copy the `database_id` from the output into `wrangler.jsonc`.
-
-3. **Create a KV namespace**:
-
-   ```bash
-   npx wrangler kv namespace create CACHE
-   ```
-
-   Copy the `id` from the output into the `kv_namespaces` binding in `wrangler.jsonc`.
-
-4. **Apply the database migration**:
-
-   ```bash
-   npx wrangler d1 migrations apply DB --remote
-   ```
-
-5. **(Optional) Configure Sentry**:
-
-   ```bash
-   npx wrangler secret put SENTRY_DSN
-   ```
-
-6. **Deploy**:
-
-   ```bash
-   npx wrangler deploy
-   ```
-
-7. **Monitor**:
-   ```bash
-   npx wrangler tail
-   ```
-
-## Development
-
-```bash
-pnpm dev          # Start local dev server (wrangler dev)
-pnpm test         # Run full test suite
-pnpm typecheck    # TypeScript type check
-pnpm lint         # ESLint
-pnpm schema       # Print openapi.json to stdout
-```
-
-Apply migrations locally (against the local D1 replica):
-
-```bash
-npx wrangler d1 migrations apply DB --local
-```
-
-Regenerate the Prisma client after editing `prisma/schema.prisma`:
-
-```bash
-pnpm prisma:generate
-```
 
 ## API Endpoints
 
