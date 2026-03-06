@@ -662,4 +662,99 @@ describe("Task API Integration Tests", () => {
 			}
 		});
 	});
+
+	describe("Search", () => {
+		it("returns matching tasks for GET /tasks?search=<term>", async () => {
+			await createTask({
+				name: "Searchable Task",
+				slug: "searchable-task",
+				description: "Find me",
+				completed: false,
+				due_date: "2025-09-01T00:00:00.000Z",
+			});
+			await createTask({
+				name: "Other Task",
+				slug: "other-task",
+				description: "Not a match",
+				completed: false,
+				due_date: "2025-09-01T00:00:00.000Z",
+			});
+
+			const res = await SELF.fetch("http://local.test/tasks?search=Searchable");
+			const body = await res.json<{ success: boolean; result: any[] }>();
+
+			expect(res.status).toBe(200);
+			expect(body.success).toBe(true);
+			expect(body.result.length).toBeGreaterThanOrEqual(1);
+			expect(body.result.some((t: any) => t.name === "Searchable Task")).toBe(
+				true,
+			);
+		});
+	});
+
+	describe("KV cache write-fail coverage", () => {
+		it("logs error when list cache entry write fails on a fresh URL", async () => {
+			// Populate version key via an initial request (avoid mock interfering with version creation).
+			await SELF.fetch("http://local.test/tasks");
+
+			const originalPut = env.KV.put.bind(env.KV);
+			const putSpy = vi.spyOn(env.KV, "put").mockImplementation(((
+				...args: any[]
+			) => {
+				const [key] = args as [string, unknown, unknown?];
+				// Only throw for list cache entries, not the version key.
+				if (typeof key === "string" && key.includes(":list:")) {
+					throw new Error("forced list entry put failure");
+				}
+				return originalPut(...(args as Parameters<KVNamespace["put"]>));
+			}) as any);
+
+			try {
+				// Use a URL that has never been cached so we get a cache miss,
+				// then hit the KV-write-fail branch (taskList.ts logError path).
+				const res = await SELF.fetch(
+					"http://local.test/tasks?page=2&per_page=1",
+				);
+				const body = await res.json<{ success: boolean }>();
+				expect(res.status).toBe(200);
+				expect(body.success).toBe(true);
+			} finally {
+				putSpy.mockRestore();
+			}
+		});
+
+		it("logs error when read cache entry write fails on a fresh task", async () => {
+			// Create task and immediately populate version key via invalidation.
+			const taskId = await createTask({
+				name: "Cache Write Fail Task",
+				slug: "cache-write-fail-task",
+				description: "For read cache write fail coverage",
+				completed: false,
+				due_date: "2025-10-01T00:00:00.000Z",
+			});
+
+			const originalPut = env.KV.put.bind(env.KV);
+			const putSpy = vi.spyOn(env.KV, "put").mockImplementation(((
+				...args: any[]
+			) => {
+				const [key] = args as [string, unknown, unknown?];
+				// Only throw for read cache entries, not the version key.
+				if (typeof key === "string" && key.includes(":read:")) {
+					throw new Error("forced read entry put failure");
+				}
+				return originalPut(...(args as Parameters<KVNamespace["put"]>));
+			}) as any);
+
+			try {
+				// First (and only) fetch for this task — cache miss — DB fetch —
+				// KV write attempt throws — logError in taskRead.ts is exercised.
+				const res = await SELF.fetch(`http://local.test/tasks/${taskId}`);
+				const body = await res.json<{ success: boolean }>();
+				expect(res.status).toBe(200);
+				expect(body.success).toBe(true);
+			} finally {
+				putSpy.mockRestore();
+			}
+		});
+	});
 });

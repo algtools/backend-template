@@ -1,6 +1,9 @@
-import { D1ReadEndpoint } from "chanfana";
+import { OpenAPIRoute, contentJson } from "chanfana";
+import { z } from "zod";
+import { createPrismaClient } from "../../lib/prisma";
+import { TasksRepository } from "../../domain/tasks/repository";
 import { HandleArgs } from "../../types";
-import { TaskModel } from "./base";
+import { task } from "./base";
 import {
 	buildTasksReadCacheKey,
 	getTasksCacheTtlSeconds,
@@ -10,27 +13,46 @@ import {
 } from "./kvCache";
 import { logError } from "./logging";
 
-type BaseHandleReturn = Awaited<
-	ReturnType<D1ReadEndpoint<HandleArgs>["handle"]>
->;
+const readResponseSchema = z.object({ success: z.boolean(), result: task });
+type ReadResponse = z.infer<typeof readResponseSchema>;
 
-export class TaskRead extends D1ReadEndpoint<HandleArgs> {
-	_meta = {
-		model: TaskModel,
+const notFoundSchema = z.object({
+	success: z.boolean(),
+	errors: z.array(z.object({ message: z.string() })),
+});
+
+export class TaskRead extends OpenAPIRoute<HandleArgs> {
+	schema = {
+		tags: ["Tasks"],
+		summary: "Get a task by ID",
+		operationId: "tasks-read",
+		request: {
+			params: z.object({ id: z.coerce.number().int() }),
+		},
+		responses: {
+			"200": {
+				description: "Task found",
+				...contentJson(readResponseSchema),
+			},
+			"404": {
+				description: "Task not found",
+				...contentJson(notFoundSchema),
+			},
+		},
 	};
 
-	public override async handle(...args: HandleArgs): Promise<BaseHandleReturn> {
+	async handle(...args: HandleArgs): Promise<Response> {
 		const [c] = args;
 		const kv = c.env.KV;
 
-		const id = c.req.param("id");
+		const idParam = c.req.param("id");
 		let version: string | null = null;
 		let cacheKey: string | null = null;
 		try {
 			version = await getTasksCacheVersion(kv);
-			cacheKey = buildTasksReadCacheKey(version, id);
+			cacheKey = buildTasksReadCacheKey(version, idParam);
 
-			const cached = await kvGetJson<BaseHandleReturn>(kv, cacheKey, {
+			const cached = await kvGetJson<ReadResponse>(kv, cacheKey, {
 				validate: (value) => {
 					if (!value || typeof value !== "object") {
 						throw new Error("Invalid cached read payload");
@@ -42,20 +64,32 @@ export class TaskRead extends D1ReadEndpoint<HandleArgs> {
 					if (!("result" in v)) {
 						throw new Error("Invalid cached read payload: result");
 					}
-					return value as BaseHandleReturn;
+					return value as ReadResponse;
 				},
 			});
-			if (cached !== null) return cached;
+			if (cached !== null) return Response.json(cached);
 		} catch (error) {
 			logError(
 				c,
 				"Tasks KV cache read failed (read). Returning fresh.",
-				{ url: c.req.url, id, version, cacheKey },
+				{ url: c.req.url, id: idParam, version, cacheKey },
 				error,
 			);
 		}
 
-		const fresh = await super.handle(...args);
+		const data = await this.getValidatedData<typeof this.schema>();
+		const repo = new TasksRepository(createPrismaClient(c.env.DB));
+		const found = await repo.findById(data.params.id);
+
+		if (!found) {
+			return Response.json(
+				{ success: false, errors: [{ message: "Not Found" }] },
+				{ status: 404 },
+			);
+		}
+
+		const fresh: ReadResponse = { success: true, result: found };
+
 		if (version !== null && cacheKey !== null) {
 			try {
 				await kvPutJson(kv, cacheKey, fresh, {
@@ -65,11 +99,12 @@ export class TaskRead extends D1ReadEndpoint<HandleArgs> {
 				logError(
 					c,
 					"Tasks KV cache write failed (read). Returning fresh.",
-					{ url: c.req.url, id, version, cacheKey },
+					{ url: c.req.url, id: idParam, version, cacheKey },
 					error,
 				);
 			}
 		}
-		return fresh;
+
+		return Response.json(fresh);
 	}
 }

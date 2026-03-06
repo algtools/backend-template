@@ -1,6 +1,6 @@
 {
 	"name": "backend-template",
-	"version": "1.1.0",
+	"version": "1.1.0-rc.2",
 	"description": "Complete backend API template using Hono + Chanfana + D1 + Vitest.",
 	"cloudflare": {
 		"label": "Backend OpenAPI Template",
@@ -17,6 +17,8 @@
 		"publish": true
 	},
 	"dependencies": {
+		"@prisma/adapter-d1": "^7.4.2",
+		"@prisma/client": "^7.4.2",
 		"@sentry/cloudflare": "^10.32.1",
 		"chanfana": "2.8.3",
 		"hono": "4.10.7",
@@ -42,6 +44,7 @@
 		"husky": "9.1.7",
 		"lint-staged": "15.2.11",
 		"prettier": "3.4.2",
+		"prisma": "^7.4.2",
 		"semantic-release": "24.2.1",
 		"typescript": "5.9.3",
 		"typescript-eslint": "8.49.0",
@@ -49,7 +52,15 @@
 		"wrangler": "4.51.0"
 	},
 	"private": true,
+	"type": "module",
+	"pnpm": {
+		"onlyBuiltDependencies": [
+			"@prisma/engines",
+			"prisma"
+		]
+	},
 	"scripts": {
+		"prisma:generate": "prisma generate",
 		"cf-typegen": "wrangler types",
 		"deploy": "wrangler deploy",
 		"deploy:prod": "wrangler deploy --config wrangler.prod.jsonc --outdir dist --upload-source-maps --var SENTRY_RELEASE:$(sentry-cli releases propose-version)",
@@ -63,6 +74,7 @@
 		"predeploy:dev": "wrangler d1 migrations apply DB --remote --config wrangler.jsonc",
 		"predeploy:preview": "wrangler d1 migrations apply DB --remote --config wrangler.preview.jsonc",
 		"versions:upload": "node ./scripts/versions-upload.mjs",
+		"postinstall": "prisma generate",
 		"prepare": "husky",
 		"schema": "npx chanfana",
 		"seedLocalDb": "wrangler d1 migrations apply DB --local",
