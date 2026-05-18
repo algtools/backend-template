@@ -81,15 +81,19 @@ tests/
 
 ## Sentry source maps
 
+See **[docs/sentry-wrangler-playbook.md](docs/sentry-wrangler-playbook.md)** for **agent-oriented steps** to remove `.sentryclirc`, move Sentry CLI config to env vars, and add `SENTRY_DSN` under Wrangler `vars` in sibling Worker repos.
+
 [Sentry’s Wrangler guide](https://docs.sentry.io/platforms/javascript/guides/cloudflare/sourcemaps/uploading/wrangler/) is wired up via `deploy:dev` and `deploy:prod`: Wrangler builds with `--outdir dist --upload-source-maps`, injects `SENTRY_RELEASE` from `sentry-cli releases propose-version`, then `postdeploy:dev` / `postdeploy:prod` run `sentry:sourcemaps` to upload maps.
 
-**Local CLI configuration**
+**Sentry CLI environment variables**
 
-1. Copy [`.env.example`](.env.example) to `.env.local` (gitignored).
-2. Set `SENTRY_ORG`, `SENTRY_PROJECT`, and `SENTRY_AUTH_TOKEN`. Create an auth token under Sentry **Settings → Auth Tokens** with at least `project:releases` and `org:read`.
-3. Run `pnpm deploy:dev` or `pnpm deploy:prod` (applies remote migrations, deploys, then uploads source maps using `.env.local`).
+[`sentry:sourcemaps`](package.json) expects **`SENTRY_ORG`**, **`SENTRY_PROJECT`**, and **`SENTRY_AUTH_TOKEN`** in the **process environment** (for example Cloudflare Workers build-time variables). It does **not** read `.env` files. See [`.env.example`](.env.example) for the variable names and token scopes. For local deploys, `export` those variables before running `pnpm deploy:dev` or `deploy:prod`.
 
-For CI or hosts without `.env.local`, export the same three variables (for example as repository secrets) before the deploy and post-deploy steps.
+**Setup**
+
+1. Create an auth token under Sentry **Settings → Auth Tokens** with at least `project:releases` and `org:read`.
+2. In Cloudflare (or CI), configure **`SENTRY_ORG`**, **`SENTRY_PROJECT`**, and **`SENTRY_AUTH_TOKEN`** for the job that runs the post-deploy upload. Locally, `export` the same names to match [`.env.example`](.env.example).
+3. Run `pnpm deploy:dev` or `pnpm deploy:prod` (applies remote migrations, deploys, then uploads source maps).
 
 **DSN** — Set `SENTRY_DSN` in the `vars` section of [`wrangler.jsonc`](wrangler.jsonc), [`wrangler.prod.jsonc`](wrangler.prod.jsonc), and [`wrangler.preview.jsonc`](wrangler.preview.jsonc) (same URL for every environment is normal). For local `wrangler dev`, you can use [`.dev.vars`](https://developers.cloudflare.com/workers/wrangler/configuration/#environment-variables) instead of committing the value.
 
