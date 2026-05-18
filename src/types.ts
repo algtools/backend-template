@@ -11,11 +11,15 @@ export type Bindings = Env & {
 	 */
 	TASKS_CACHE_TTL_SECONDS?: string;
 	/**
-	 * Sentry DSN for error tracking.
-	 * If not set, Sentry will be disabled.
-	 * Configured via Cloudflare Dashboard secrets or wrangler vars.
+	 * Sentry DSN for error tracking. Not a secret; set in each wrangler config `vars`
+	 * (or `.dev.vars` locally). Empty string disables the SDK.
 	 */
 	SENTRY_DSN?: string;
+	/**
+	 * Sentry release name; injected on deploy via `--var SENTRY_RELEASE:...`.
+	 * Must match the release used when uploading source maps.
+	 */
+	SENTRY_RELEASE?: string;
 };
 
 export type AppContext = Context<{ Bindings: Bindings }>;

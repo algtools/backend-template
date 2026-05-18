@@ -16,6 +16,8 @@
 	},
 	"vars": {
 		"ENVIRONMENT": "development",
+		// Same DSN across envs is fine; it is not a secret. Set in each wrangler config or override locally via .dev.vars.
+		"SENTRY_DSN": "",
 	},
 	"d1_databases": [
 		{

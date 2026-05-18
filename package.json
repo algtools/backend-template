@@ -38,6 +38,7 @@
 		"@sentry/cli": "^2.58.4",
 		"@types/node": "24.10.1",
 		"@vitest/coverage-istanbul": "3.2.4",
+		"dotenv-cli": "^11.0.0",
 		"eslint": "9.17.0",
 		"eslint-config-prettier": "10.1.8",
 		"globals": "15.14.0",
@@ -83,7 +84,7 @@
 		"vitest": "vitest --config tests/vitest.config.mts",
 		"vitest:coverage": "vitest run --coverage --config tests/vitest.config.mts",
 		"test": "npm run vitest",
-		"sentry:sourcemaps": "_SENTRY_RELEASE=$(sentry-cli releases propose-version) && sentry-cli releases new $_SENTRY_RELEASE && sentry-cli sourcemaps upload --release=$_SENTRY_RELEASE --strip-prefix 'dist/..' dist",
+		"sentry:sourcemaps": "dotenv -e .env.local -- sh -c '_SENTRY_RELEASE=$(sentry-cli releases propose-version) && sentry-cli releases new $_SENTRY_RELEASE && sentry-cli sourcemaps upload --release=$_SENTRY_RELEASE --strip-prefix \"dist/..\" dist'",
 		"postdeploy:dev": "pnpm sentry:sourcemaps",
 		"postdeploy:prod": "pnpm sentry:sourcemaps"
 	},
