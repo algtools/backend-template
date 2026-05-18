@@ -69,14 +69,13 @@ openapi.route("/tasks", tasksRouter);
 // Register other endpoints
 openapi.post("/dummy/:slug", DummyEndpoint);
 
-// Sentry is enabled only when SENTRY_DSN environment variable is set.
-// Configure it via wrangler secrets: `wrangler secret put SENTRY_DSN`
+// Sentry is enabled only when SENTRY_DSN is non-empty (Wrangler `vars`, not a secret).
 export default Sentry.withSentry((env: Bindings) => {
-	const { id: versionId } = env.CF_VERSION_METADATA;
 	return {
 		// When DSN is undefined/empty, Sentry SDK is disabled (no events sent)
 		dsn: env.SENTRY_DSN,
-		release: versionId,
+		// Must match sentry-cli source map upload release (git SHA from deploy script)
+		release: env.SENTRY_RELEASE ?? env.CF_VERSION_METADATA?.id,
 		environment: env.ENVIRONMENT,
 		// Adds request headers and IP for users, for more info visit:
 		// https://docs.sentry.io/platforms/javascript/guides/cloudflare/configuration/options/#sendDefaultPii
